@@ -1,7 +1,7 @@
 // Where the dashboard finds the backend. Override for testing with ?api=http://host:port
-// (Step 5 sets apiBase to the Railway URL.)
+// Live backend: Render service 3form-twin-api.
 window.TWIN_CONFIG = {
-  apiBase: "https://3form-twin-api.onrender.com",
+  apiBase: "https://threeform-twin-api.onrender.com",
   // Unity web build files, relative to this page.
   unity: {
     base: "unity/Build",
