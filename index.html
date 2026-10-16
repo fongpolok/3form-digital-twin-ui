@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inspection Cell Digital Twin | 3form Engineering Co</title>
+  <meta name="description" content="Live digital twin of a robotic visual-inspection cell with an AI process assistant. Simulated data.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="https://3formhk.com/demos/">
+      <span class="logo" aria-hidden="true">3</span>
+      <span class="brand-text">
+        <span class="brand-name">3form Co</span>
+        <span class="brand-sub" data-i18n="app.title">Inspection Cell Digital Twin</span>
+      </span>
+    </a>
+    <div class="top-actions">
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="tc">中文</button>
+      </div>
+      <span id="user-name" class="user-name" hidden></span>
+      <button type="button" id="login-btn" class="btn ghost" data-i18n="auth.login">Team login</button>
+      <button type="button" id="logout-btn" class="btn ghost" data-i18n="auth.logout" hidden>Log out</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="statusbar" aria-live="polite">
+      <span class="pill" id="conn-pill"><span class="dot"></span><span class="pill-text">Connecting…</span></span>
+      <span class="pill" id="machine-pill"><span class="icon" aria-hidden="true"></span><span class="pill-text"></span></span>
+      <span class="phase" id="phase-text"></span>
+      <span class="viewers" id="viewers-text"></span>
+    </section>
+
+    <div class="layout-main">
+      <section class="card twin-card">
+        <div class="card-head">
+          <h2 data-i18n="twin.title">Live 3D twin</h2>
+          <span class="hint" data-i18n="twin.hint">Drag to rotate · scroll or pinch to zoom</span>
+        </div>
+        <div class="twin-wrap" id="twin-wrap">
+          <canvas id="unity-canvas" tabindex="-1" aria-label="3D view of the inspection cell"></canvas>
+          <div class="twin-overlay" id="twin-overlay">
+            <div class="twin-overlay-inner">
+              <div class="progress" id="twin-progress" hidden><div class="progress-bar" id="twin-progress-bar"></div></div>
+              <p id="twin-overlay-text" data-i18n="twin.loading">Loading 3D view…</p>
+            </div>
+          </div>
+        </div>
+        <ol class="flow" aria-label="Machine cycle">
+          <li data-phase="feeding" data-i18n="phase.feeding">Conveyor feed</li>
+          <li data-phase="picking" data-i18n="phase.picking">Suction pick</li>
+          <li data-phase="placing" data-i18n="phase.placing">Place on stand</li>
+          <li data-phase="scanning" data-i18n="phase.scanning">Camera scan</li>
+          <li data-phase="sorting" data-i18n="phase.sorting">Sort to bin</li>
+        </ol>
+      </section>
+
+      <aside class="side">
+        <div class="kpis">
+          <div class="kpi"><span class="kpi-label" data-i18n="kpi.total">Parts inspected</span><span class="kpi-value" id="kpi-total">–</span></div>
+          <div class="kpi"><span class="kpi-label" data-i18n="kpi.good">Good</span><span class="kpi-value" id="kpi-good">–</span></div>
+          <div class="kpi"><span class="kpi-label" data-i18n="kpi.ng">Rejected (NG)</span><span class="kpi-value" id="kpi-ng">–</span></div>
+          <div class="kpi"><span class="kpi-label" data-i18n="kpi.cycle">Avg cycle time</span><span class="kpi-value" id="kpi-cycle">–</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 data-i18n="trend.title">NG rate</h2>
+            <span class="hint" data-i18n="trend.sub">Rolling, last 50 parts · past 30 min</span>
+          </div>
+          <div class="hero-row">
+            <span class="hero" id="ng-rate-hero">–</span>
+            <span class="hero-note" id="ng-rate-note"></span>
+          </div>
+          <div class="chart" id="trend-chart"></div>
+          <button type="button" class="link-btn" data-table-toggle="trend-table" data-i18n="chart.showTable">Show as table</button>
+          <div class="table-wrap" id="trend-table" hidden></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 data-i18n="defects.title">Reject reasons</h2>
+            <span class="hint" data-i18n="defects.sub">Last 50 parts</span>
+          </div>
+          <div class="chart" id="defect-chart"></div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="layout-two">
+      <section class="card controls-card" id="controls-card">
+        <div class="card-head">
+          <h2 data-i18n="controls.title">Machine controls</h2>
+          <span class="lock" id="controls-lock" data-i18n="controls.locked">🔒 Team login required</span>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn" data-action="start" data-i18n="controls.start">Start</button>
+          <button type="button" class="btn secondary" data-action="stop" data-i18n="controls.stop">Stop</button>
+          <button type="button" class="btn secondary" data-action="reset_counters" data-i18n="controls.reset">Reset counters</button>
+        </div>
+        <div class="params" id="params"></div>
+        <div class="fault-box" id="fault-box">
+          <h3 data-i18n="controls.faultTitle">Demo: inject a fault</h3>
+          <p class="muted" data-i18n="controls.faultHelp">Visitors are not told which fault is active. The AI must work it out from the data.</p>
+          <div class="btn-row">
+            <select id="fault-select" aria-label="Fault"></select>
+            <button type="button" class="btn secondary" id="fault-inject" data-i18n="controls.inject">Inject</button>
+            <button type="button" class="btn secondary" id="fault-clear" data-i18n="controls.clear">Clear faults</button>
+          </div>
+          <p class="muted" id="fault-active"></p>
+        </div>
+        <p class="form-msg" id="controls-msg" role="status"></p>
+      </section>
+
+      <section class="card ai-card">
+        <div class="card-head">
+          <h2 data-i18n="ai.title">AI process assistant</h2>
+          <span class="hint" id="ai-quota"></span>
+        </div>
+        <p class="muted" data-i18n="ai.intro">The AI studies the last 50 parts and proposes setting changes. Nothing changes until a team member approves.</p>
+        <button type="button" class="btn" id="ai-ask" data-i18n="ai.ask">Ask AI for a diagnosis</button>
+        <p class="form-msg" id="ai-msg" role="status"></p>
+        <div id="ai-suggestion" class="suggestion" hidden></div>
+        <details class="ai-history">
+          <summary data-i18n="ai.history">Earlier suggestions</summary>
+          <ul id="ai-history-list"></ul>
+        </details>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 data-i18n="audit.title">Change log</h2>
+        <span class="hint" data-i18n="audit.sub">Every change, who made it, and whether the AI proposed it</span>
+      </div>
+      <div class="table-wrap">
+        <table class="table" id="audit-table">
+          <thead><tr>
+            <th data-i18n="audit.time">Time</th><th data-i18n="audit.who">Who</th>
+            <th data-i18n="audit.source">Source</th><th data-i18n="audit.change">Change</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p data-i18n="footer.note">Simulated machine: robot, conveyor and camera are simulated; inspection is rule-based until the real vision model is connected. AI suggestions by DeepSeek.</p>
+    <p>© 3form Engineering Co · <a href="https://3formhk.com/demos/" data-i18n="footer.back">Back to all demos</a></p>
+  </footer>
+
+  <dialog id="login-dialog" class="dialog">
+    <form method="dialog" id="login-form">
+      <h2 data-i18n="auth.title">Team login</h2>
+      <label><span data-i18n="auth.username">Username</span><input name="username" autocomplete="username" required></label>
+      <label><span data-i18n="auth.password">Password</span><input name="password" type="password" autocomplete="current-password" required></label>
+      <p class="form-msg error" id="login-error" role="alert"></p>
+      <div class="btn-row end">
+        <button type="button" class="btn secondary" id="login-cancel" data-i18n="auth.cancel">Cancel</button>
+        <button type="submit" class="btn" id="login-submit" data-i18n="auth.submit">Log in</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+
+  <script src="js/config.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
